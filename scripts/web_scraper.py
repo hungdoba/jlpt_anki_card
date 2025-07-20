@@ -1,59 +1,22 @@
 import requests
 import json
 from bs4 import BeautifulSoup
-import openpyxl
-import random
-import time
 import pykakasi  # to translate hiragana -> furigana
-
-kks = pykakasi.kakasi()
+from utils.media_utils import random_sleep, download_media
+from utils.excel_utils import read_excel_file, write_excel_file
 
 url = "https://kantan.vn/postrequest.ashx"
+kks = pykakasi.kakasi()
 
+# Utility: get words from excel
+def get_words_from_excel():
+    data = read_excel_file('vocabulary.xlsx', 'vocabulary')
+    return [str(row[0]) for row in data[1:]]  # skip header
 
-def random_sleep():
-    seconds_list = [1, 2]
-    seconds = random.choice(seconds_list)
-    print(f"delay in {seconds}")
-    time.sleep(seconds)
-
-
-def download_media(http_to_sound, word_furigana_name):
-    try:
-        with open("/home/hung/Documents/PythonVisual/python-anki/sound/" + word_furigana_name, "wb") as f:
-            r = requests.get(http_to_sound)
-            f.write(r.content)
-            # print("write: "+word_furigana_name+" done")
-    except:
-        print(f"Error in download media for {word_furigana_name}")
-
-
-def read_excel_file():
-    wb = openpyxl.load_workbook('vocabulary.xlsx')
-    ws = wb["vocabulary"]
-    word = []
-    for row in range(1, ws.max_row):
-        word.append(str(ws.cell(row, 1).value))
-    wb.close()
-    return(word)
-
-
+# Utility: write to excel
 def write_excel(row, vn_mean, sound, image, exam_jp_1, exam_mean_1, exam_jp_2, exam_mean_2, exam_jp_3, exam_mean_3, romaji, hiragana):
-    wb = openpyxl.load_workbook('vocabulary.xlsx')
-    ws = wb["vocabulary"]
-    ws.cell(row, 4).value = vn_mean
-    ws.cell(row, 5).value = sound
-    ws.cell(row, 6).value = image
-    ws.cell(row, 7).value = exam_jp_1
-    ws.cell(row, 8).value = exam_mean_1
-    ws.cell(row, 9).value = exam_jp_2
-    ws.cell(row, 10).value = exam_mean_2
-    ws.cell(row, 11).value = exam_jp_3
-    ws.cell(row, 12).value = exam_mean_3
-    ws.cell(row, 13).value = romaji
-    ws.cell(row, 14).value = hiragana
-    wb.save('vocabulary.xlsx')
-    wb.close()
+    values = [None, None, None, vn_mean, sound, image, exam_jp_1, exam_mean_1, exam_jp_2, exam_mean_2, exam_jp_3, exam_mean_3, romaji, hiragana]
+    write_excel_file('vocabulary.xlsx', 'vocabulary', row, values)
 
 
 def get_word(word_kanji, word_romaji, row):
@@ -178,17 +141,15 @@ def get_word(word_kanji, word_romaji, row):
 
 
 def main(begin, end):
-    word = read_excel_file()
+    words = get_words_from_excel()
     for i in range(begin, end):
         print(f"Word number {i}: ")
-
-        word_furigana = kks.convert(word[i])
+        word_furigana = kks.convert(words[i])
         for word_furigana_subset in word_furigana:
             result = word_furigana_subset['hepburn']
             if i % 100 == 0:
-                time.sleep(10)
-
-            word_kanji = word[i]
+                random_sleep()
+            word_kanji = words[i]
             word_romaji = result
             row = i + 1
             get_word(word_kanji, word_romaji, row)
